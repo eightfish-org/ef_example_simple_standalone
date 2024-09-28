@@ -164,7 +164,7 @@ impl ArticleModule {
     }
 
     fn version(_req: &mut Request) -> Result<Response> {
-        let ret = r#"{"version": 1.2}"#.to_string();
+        let ret = r#"{"version": 1.3}"#.to_string();
         let response = Response::from_str(Status::Successful, Default::default(), ret);
 
         Ok(response)

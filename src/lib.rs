@@ -34,7 +34,7 @@ fn on_message(message: Bytes) -> Result<()> {
     let app = build_app();
     let aw = spin_worker::Worker::mount(app);
 
-    aw.work(message).unwrap();
+    aw.work(message)?;
 
     Ok(())
 }
