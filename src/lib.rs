@@ -3,7 +3,7 @@ use anyhow::Result;
 use bytes::Bytes;
 use spin_sdk::redis_component;
 
-use eightfish::{App as EightFishApp, GlobalFilter, Request, Response, Result as EFResult};
+use eightfish_sdk::{App as EightFishApp, GlobalFilter, Request, Response, Result as EFResult};
 
 mod article;
 

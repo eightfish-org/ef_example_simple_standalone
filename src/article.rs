@@ -1,13 +1,13 @@
 use anyhow::{anyhow, bail};
-use eightfish::{
+use eightfish_derive::EightFishModel;
+use eightfish_sdk::{
     EightFishModel, HandlerCRUD, Info, Module, Request, Response, Result, Router, Status,
 };
-use eightfish_derive::EightFishModel;
 use serde::{Deserialize, Serialize};
 use spin_sdk::pg::{self, DbValue, Decode, ParameterValue};
 
-const REDIS_URL_ENV: &str = "REDIS_URL";
-const DB_URL_ENV: &str = "DB_URL";
+const REDIS_URL_ENV: &str = "REDIS_URL_ENV";
+const DB_URL_ENV: &str = "DB_URL_ENV";
 
 #[derive(Debug, Clone, Serialize, Deserialize, EightFishModel, Default)]
 pub struct Article {
@@ -22,12 +22,13 @@ pub struct ArticleModule;
 impl ArticleModule {
     fn get_one(req: &mut Request) -> Result<Response> {
         let pg_addr = std::env::var(DB_URL_ENV)?;
+        let pg_conn = pg::Connection::open(&pg_addr)?;
 
         let params = req.parse_urlencoded()?;
         let article_id = params.get("id").ok_or(anyhow!("id error"))?;
 
         let (sql, sql_params) = Article::build_get_by_id(article_id);
-        let rowset = pg::query(&pg_addr, &sql, &sql_params)?;
+        let rowset = pg_conn.query(&sql, &sql_params)?;
 
         let results = if let Some(row) = rowset.rows.into_iter().next() {
             vec![Article::from_row(row)]
@@ -46,6 +47,7 @@ impl ArticleModule {
 
     fn new_article(req: &mut Request) -> Result<Response> {
         let pg_addr = std::env::var(DB_URL_ENV)?;
+        let pg_conn = pg::Connection::open(&pg_addr)?;
 
         let params = req.parse_urlencoded()?;
         let title = params
@@ -74,7 +76,7 @@ impl ArticleModule {
         };
 
         let (sql_statement, sql_params) = article.build_insert();
-        _ = pg::execute(&pg_addr, &sql_statement, &sql_params)?;
+        _ = pg_conn.execute(&sql_statement, &sql_params)?;
 
         let results: Vec<Article> = vec![article];
 
@@ -89,6 +91,7 @@ impl ArticleModule {
 
     fn update(req: &mut Request) -> Result<Response> {
         let pg_addr = std::env::var(DB_URL_ENV)?;
+        let pg_conn = pg::Connection::open(&pg_addr)?;
 
         let params = req.parse_urlencoded()?;
 
@@ -107,7 +110,7 @@ impl ArticleModule {
             .to_owned();
 
         let (sql, sql_params) = Article::build_get_by_id(id.as_str());
-        let rowset = pg::query(&pg_addr, &sql, &sql_params)?;
+        let rowset = pg_conn.query(&sql, &sql_params)?;
         match rowset.rows.into_iter().next() {
             Some(row) => {
                 let old_article = Article::from_row(row);
@@ -121,7 +124,7 @@ impl ArticleModule {
                 };
 
                 let (sql, sql_params) = article.build_update();
-                _ = pg::execute(&pg_addr, &sql, &sql_params)?;
+                _ = pg_conn.execute(&sql, &sql_params)?;
 
                 let results: Vec<Article> = vec![article];
 
@@ -134,20 +137,21 @@ impl ArticleModule {
                 Ok(Response::new(Status::Successful, info, results))
             }
             None => {
-                bail!("update action: no item in db");
+                bail!("update action: no item in db")
             }
         }
     }
 
     fn delete(req: &mut Request) -> Result<Response> {
         let pg_addr = std::env::var(DB_URL_ENV)?;
+        let pg_conn = pg::Connection::open(&pg_addr)?;
 
         let params = req.parse_urlencoded()?;
 
         let id = params.get("id").ok_or(anyhow!("id error"))?.to_owned();
 
         let (sql, sql_params) = Article::build_delete(id.as_str());
-        _ = pg::execute(&pg_addr, &sql, &sql_params)?;
+        _ = pg_conn.execute(&sql, &sql_params)?;
 
         let info = Info {
             model_name: Article::model_name(),
@@ -160,7 +164,7 @@ impl ArticleModule {
     }
 
     fn version(_req: &mut Request) -> Result<Response> {
-        let ret = r#"{"version": 1}"#.to_string();
+        let ret = r#"{"version": 1.2}"#.to_string();
         let response = Response::from_str(Status::Successful, Default::default(), ret);
 
         Ok(response)
@@ -169,12 +173,12 @@ impl ArticleModule {
 
 impl Module for ArticleModule {
     fn router(&self, router: &mut Router) -> Result<()> {
-        router.get("/article", Self::get_one);
-        router.post("/article/new", Self::new_article);
-        router.post("/article/update", Self::update);
-        router.post("/article/delete", Self::delete);
+        router.get("/simpletest/v1/article", Self::get_one);
+        router.post("/simpletest/v1/article/new", Self::new_article);
+        router.post("/simpletest/v1/article/update", Self::update);
+        router.post("/simpletest/v1/article/delete", Self::delete);
 
-        router.get("/version", Self::version);
+        router.get("/simpletest/v1/version", Self::version);
 
         Ok(())
     }

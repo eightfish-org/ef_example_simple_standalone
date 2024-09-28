@@ -1,15 +1,36 @@
-spin_version = "1"
-authors = ["Fermyon Engineering <engineering@fermyon.com>"]
-description = "A redis application."
-name = "simple"
-trigger = {type = "redis", address = "redis://localhost:6379"}
-version = "0.1.0"
+spin_manifest_version = 2
 
-[[component]]
-id = "redis-worker"
-source = "target/wasm32-wasi/release/simple.wasm"
-#environment = { DB_URL = "host=localhost user=postgres password=123456 dbname=spin_dev sslmode=disable", REDIS_URL = "redis://127.0.0.1:6379"}
-[component.trigger]
-channel="proxy2spin"
-[component.build]
+# General identification information
+[application]
+name = "simpletest"
+version = "0.2.0"
+description = "simple test for EF."
+
+[variables]
+redis_host = { required = true }  # will be filled out in ENV
+proto_id = { required = true }  # will be filled out in ENV
+wasm_hash = { required = true }  # will be filled out in ENV
+
+[application.trigger.redis]
+address = "redis://{{redis_host}}:6379"
+
+[[trigger.redis]]
+channel = "vin2worker"
+component = "proto-instance"
+
+[[trigger.redis]]
+channel = "vin2worker:simpletest"
+component = "proto-instance"
+
+[component.proto-instance]
+source = "target/wasm32-wasi/release/simpletest.wasm"
+
+[component.proto-instance.variables]
+redis_host = "{{ redis_host }}"
+proto_id = "{{ proto_id }}"
+wasm_hash = "{{ wasm_hash }}"
+
+# How to build the Wasm module from source
+[component.proto-instance.build]
 command = "cargo build --target wasm32-wasi --release"
+
